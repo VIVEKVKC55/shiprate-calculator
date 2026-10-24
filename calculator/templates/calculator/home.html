@@ -1,0 +1,25 @@
+{% extends 'calculator/base.html' %}
+{% block title %}Shipping rate calculator · ShipRate{% endblock %}
+{% block content %}
+<section class="hero-row"><div><div class="eyebrow">SHIP SMARTER</div><h1>Know your shipping cost<br class="d-none d-md-block"> before you send.</h1><p class="lead-copy">Compare real courier serviceability and estimated rates for your shipment.</p></div><div class="hero-badge" aria-hidden="true">↗</div></section>
+<div class="row g-4 align-items-start">
+  <div class="col-lg-8"><section class="surface-card calculator-card">
+    <div class="card-heading"><div><h2>Shipment details</h2><p>Tell us where your parcel is going.</p></div><span class="step-pill">01 / DETAILS</span></div>
+    <form method="post" id="calculator-form" novalidate>{% csrf_token %}
+      {% if form.non_field_errors %}<div class="alert alert-danger">{{ form.non_field_errors }}</div>{% endif %}
+      <div class="row g-3">
+        <div class="col-md-6">{% include 'calculator/field.html' with field=form.pickup_postcode icon='↗' placeholder='e.g. 110001' %}</div>
+        <div class="col-md-6">{% include 'calculator/field.html' with field=form.delivery_postcode icon='↘' placeholder='e.g. 400001' %}</div>
+        <div class="col-md-6">{% include 'calculator/field.html' with field=form.weight icon='kg' placeholder='e.g. 1.25' %}</div>
+        <div class="col-md-6">{% include 'calculator/field.html' with field=form.order_value icon='₹' placeholder='e.g. 1,499' %}</div>
+        <div class="col-12"><label class="form-label">Payment mode</label><div class="payment-options">{% for radio in form.payment_mode %}<label class="payment-option">{{ radio.tag }}<span>{{ radio.choice_label }}</span></label>{% endfor %}</div>{% for error in form.payment_mode.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}</div>
+      </div>
+      <div class="dimensions-toggle"><div><strong>Parcel dimensions</strong><span>Optional · enter all three dimensions together</span></div><button class="btn btn-link" type="button" data-bs-toggle="collapse" data-bs-target="#dimensions" aria-expanded="false">Add dimensions <span>＋</span></button></div>
+      <div class="collapse {% if form.length.value or form.width.value or form.height.value %}show{% endif %}" id="dimensions"><div class="row g-3 pt-2">{% for field in form %}{% if field.name == 'length' or field.name == 'width' or field.name == 'height' %}<div class="col-4">{% include 'calculator/field.html' with field=field placeholder='cm' %}</div>{% endif %}{% endfor %}</div><p class="form-text mt-2 mb-0">Dimensions are shown for reference. Shiprocket’s serviceability request uses actual weight.</p></div>
+      <div class="form-actions"><button class="btn btn-primary btn-lg" type="submit" id="submit-button"><span class="button-label">Find courier rates <span aria-hidden="true">→</span></span><span class="spinner-border spinner-border-sm d-none" aria-hidden="true"></span></button><button class="btn btn-reset" type="reset">Reset form</button></div>
+    </form>
+  </section></div>
+  <aside class="col-lg-4"><div class="side-panel"><div class="side-icon">◎</div><h3>Rates that match<br>your route</h3><p>We check live serviceability with Shiprocket and show the courier options available for your shipment.</p><ul class="feature-list"><li><span>✓</span> Real courier availability</li><li><span>✓</span> COD and prepaid options</li><li><span>✓</span> Estimated delivery times</li></ul><div class="side-note">No booking is made. This is a rate estimate only.</div></div></aside>
+</div>
+{% endblock %}
+{% block scripts %}{% load static %}<script src="{% static 'calculator/js/calculator.js' %}"></script>{% endblock %}
