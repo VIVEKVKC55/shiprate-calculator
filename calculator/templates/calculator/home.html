@@ -8,8 +8,8 @@
     <form method="post" id="calculator-form" novalidate>{% csrf_token %}
       {% if form.non_field_errors %}<div class="alert alert-danger">{{ form.non_field_errors }}</div>{% endif %}
       <div class="row g-3">
-        <div class="col-md-6">{% include 'calculator/field.html' with field=form.pickup_postcode icon='↗' placeholder='e.g. 110001' %}</div>
-        <div class="col-md-6">{% include 'calculator/field.html' with field=form.delivery_postcode icon='↘' placeholder='e.g. 400001' %}</div>
+        <div class="col-md-6">{% include 'calculator/field.html' with field=form.pickup_postcode icon='↗' placeholder='e.g. 110001' %}<div class="pincode-location" id="pickup-location" data-lookup-url="{% url 'calculator:pincode-location' '000000' %}" aria-live="polite"></div></div>
+        <div class="col-md-6">{% include 'calculator/field.html' with field=form.delivery_postcode icon='↘' placeholder='e.g. 400001' %}<div class="pincode-location" id="delivery-location" data-lookup-url="{% url 'calculator:pincode-location' '000000' %}" aria-live="polite"></div></div>
         <div class="col-md-6">{% include 'calculator/field.html' with field=form.weight icon='kg' placeholder='e.g. 1.25' %}</div>
         <div class="col-md-6">{% include 'calculator/field.html' with field=form.order_value icon='₹' placeholder='e.g. 1,499' %}</div>
         <div class="col-12"><label class="form-label">Payment mode</label><div class="payment-options">{% for radio in form.payment_mode %}<label class="payment-option">{{ radio.tag }}<span>{{ radio.choice_label }}</span></label>{% endfor %}</div>{% for error in form.payment_mode.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}</div>
@@ -21,5 +21,9 @@
   </section></div>
   <aside class="col-lg-4"><div class="side-panel"><div class="side-icon">◎</div><h3>Rates that match<br>your route</h3><p>We check live serviceability with Shiprocket and show the courier options available for your shipment.</p><ul class="feature-list"><li><span>✓</span> Real courier availability</li><li><span>✓</span> COD and prepaid options</li><li><span>✓</span> Estimated delivery times</li></ul><div class="side-note">No booking is made. This is a rate estimate only.</div></div></aside>
 </div>
+<section id="async-results" class="async-results d-none" aria-live="polite" aria-busy="false">
+  <div id="calculator-status" class="alert" role="status"></div>
+  <div id="courier-results"></div>
+</section>
 {% endblock %}
-{% block scripts %}{% load static %}<script src="{% static 'calculator/js/calculator.js' %}"></script>{% endblock %}
+{% block scripts %}{% load static %}<script src="{% static 'calculator/js/calculator.js' %}?1.01"></script>{% endblock %}

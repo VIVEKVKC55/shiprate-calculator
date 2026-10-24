@@ -8,6 +8,8 @@ A server-rendered Django app that checks real courier serviceability and estimat
 - Server-side and browser-side validation.
 - Server-side Shiprocket authentication, cached bearer token, and one automatic refresh after an expired-token response.
 - Courier results sorted by estimate, with returned delivery estimates and COD availability when present.
+- AJAX rate lookup with an inline loading state and results, so the calculator page stays open while couriers load.
+- Pincode city/district and state lookup for pickup and delivery pincodes.
 - Safe user-facing error handling for missing configuration, credentials, timeouts, API errors, and empty results.
 - Automated tests mock external HTTP calls and need no Shiprocket credentials.
 
@@ -65,6 +67,8 @@ Open <http://127.0.0.1:8000/>. Configure a running MySQL service and make sure t
 For a rate lookup, the server authenticates at `/auth/login` and calls `/courier/serviceability/` with `pickup_postcode`, `delivery_postcode`, actual `weight`, and `cod` (1 for COD, 0 for prepaid). Shiprocket documents auth tokens as valid for 10 days; this app caches them for 9 days and refreshes once if serviceability returns HTTP 401. Dimensions and order value are collected for the shipment form but are not sent because they are not required by the documented serviceability request used here. No volumetric-weight substitution is performed.
 
 The displayed rates and delivery times come only from fields returned by Shiprocket. Rates are estimates and may differ at booking due to shipment details, surcharges, or account configuration. Missing response fields are omitted or shown as unavailable.
+
+The city/state helper looks up public postal pincode data separately from the Shiprocket quote. If that lookup is unavailable, it does not block rate calculation.
 
 ## Tests
 

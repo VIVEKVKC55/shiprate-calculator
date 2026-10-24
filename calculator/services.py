@@ -136,3 +136,54 @@ def check_serviceability(*, pickup_postcode, delivery_postcode, weight, cod):
     if data.get("status") is False or data.get("status_code") not in (None, 200, 202):
         raise ShiprocketUnavailableError("Shiprocket could not calculate rates for these shipment details.")
     return _courier_list(data)
+
+
+def lookup_pincode_location(pincode):
+    """Look up district and state using public postal PIN directory APIs."""
+    cache_key = f"india_post_pincode_location_{pincode}"
+    cached = cache.get(cache_key)
+    if cached:
+        return cached
+    providers = (
+        (f"https://api.pincodeapi.in/api/v1/pincode/{pincode}", "versioned"),
+        (f"https://api.postalpincode.in/pincode/{pincode}", "legacy"),
+    )
+    for url, provider in providers:
+        try:
+            response = requests.get(url, timeout=REQUEST_TIMEOUT)
+            response.raise_for_status()
+            payload = response.json()
+        except (requests.RequestException, ValueError) as exc:
+            logger.info("Pincode lookup provider failed (%s).", type(exc).__name__)
+            continue
+
+        office = None
+        if provider == "versioned" and isinstance(payload, dict) and payload.get("success"):
+            data = payload.get("data")
+            offices = data.get("post_offices", []) if isinstance(data, dict) else []
+            if isinstance(offices, list):
+                office = next((item for item in offices if isinstance(item, dict) and item.get("delivery_status") == "Delivery"), None)
+                if office is None:
+                    office = next((item for item in offices if isinstance(item, dict)), None)
+            location = {
+                "city": str((office or {}).get("district") or "").strip(),
+                "state": str((office or {}).get("state") or "").strip(),
+            }
+        elif provider == "legacy" and isinstance(payload, list) and payload and isinstance(payload[0], dict):
+            entry = payload[0]
+            offices = entry.get("PostOffice")
+            if entry.get("Status") == "Success" and isinstance(offices, list):
+                office = next((item for item in offices if isinstance(item, dict) and item.get("DeliveryStatus") == "Delivery"), None)
+                if office is None:
+                    office = next((item for item in offices if isinstance(item, dict)), None)
+            location = {
+                "city": str((office or {}).get("District") or "").strip(),
+                "state": str((office or {}).get("State") or "").strip(),
+            }
+        else:
+            location = {"city": "", "state": ""}
+
+        if location["city"] or location["state"]:
+            cache.set(cache_key, location, 24 * 60 * 60)
+            return location
+    return None

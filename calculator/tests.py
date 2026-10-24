@@ -139,3 +139,49 @@ class CalculatorViewTests(SimpleTestCase):
 
     def test_about_page_loads(self):
         self.assertEqual(self.client.get("/about/").status_code, 200)
+
+    @patch("calculator.views.check_serviceability", return_value=[{"courier_name": "Live result", "rate": 52}])
+    def test_ajax_post_returns_json_without_page_template(self, lookup):
+        response = self.client.post("/", valid_payload(), HTTP_X_REQUESTED_WITH="XMLHttpRequest")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json(), {"ok": True, "couriers": [{"courier_name": "Live result", "rate": 52}]})
+        lookup.assert_called_once()
+
+    def test_ajax_validation_error_returns_field_messages(self):
+        response = self.client.post(
+            "/", valid_payload(delivery_postcode="bad"), HTTP_X_REQUESTED_WITH="XMLHttpRequest"
+        )
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("delivery_postcode", response.json()["errors"])
+
+    @patch("calculator.views.check_serviceability", side_effect=ShiprocketUnavailableError("Try again later."))
+    def test_ajax_api_error_returns_safe_json_message(self, lookup):
+        response = self.client.post("/", valid_payload(), HTTP_X_REQUESTED_WITH="XMLHttpRequest")
+        self.assertEqual(response.status_code, 502)
+        self.assertEqual(response.json(), {"ok": False, "error": "Try again later."})
+
+    @patch("calculator.views.lookup_pincode_location", return_value={"city": "New Delhi", "state": "Delhi"})
+    def test_pincode_lookup_returns_city_and_state(self, lookup):
+        response = self.client.get("/api/pincode/110001/")
+        self.assertEqual(response.json(), {"ok": True, "city": "New Delhi", "state": "Delhi"})
+        lookup.assert_called_once_with("110001")
+
+    @patch("calculator.views.lookup_pincode_location")
+    def test_pincode_lookup_rejects_invalid_input(self, lookup):
+        response = self.client.get("/api/pincode/1234x6/")
+        self.assertEqual(response.status_code, 400)
+        lookup.assert_not_called()
+
+    @patch("calculator.services.requests.get")
+    def test_pincode_lookup_parses_versioned_directory_response(self, get):
+        get.return_value = Mock(
+            status_code=200,
+            json=lambda: {
+                "success": True,
+                "data": {"post_offices": [{"district": "New Delhi", "state": "Delhi", "delivery_status": "Delivery"}]},
+            },
+        )
+        from .services import lookup_pincode_location
+
+        self.assertEqual(lookup_pincode_location("110001"), {"city": "New Delhi", "state": "Delhi"})
+        self.assertIn("api.pincodeapi.in/api/v1/pincode/110001", get.call_args.args[0])
